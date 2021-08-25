@@ -15,16 +15,8 @@ public class TrustAllManager implements X509TrustManager {
     }
 
     public void checkClientTrusted(X509Certificate[] chain, String authType) {
-        for (int i = 0; i < chain.length; i++) {
-            System.out.println(chain[i].getSubjectDN().getName());
-        }
-        System.out.println("");
     }
 
     public void checkServerTrusted(X509Certificate[] chain, String authType) {
-        for (int i = 0; i < chain.length; i++) {
-            System.out.println(chain[i].getSubjectDN().getName());
-        }
-        System.out.println("");
     }
 }

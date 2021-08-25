@@ -3,7 +3,7 @@ Java MQTT client example with gmssl
 
 ## Build Requirement
 ```shell
-git clone https://github.com/alvin1221/paho.mqtt.java/tree/alvin/develop
+git clone -b develop https://github.com/alvin1221/paho.mqtt.java
 mvn install -DskipTests
 ```
 

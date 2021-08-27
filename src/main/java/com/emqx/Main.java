@@ -34,7 +34,7 @@ public class Main {
             Security.insertProviderAt((Provider) Class.forName("cn.gmssl.jsse.provider.GMJSSE").newInstance(), 2);
 
             MqttClient client = new MqttClient(broker, clientId, persistence);
-            client.setTimeToWait(2000);
+            client.setTimeToWait(10000);
 
             MqttConnectOptions connOpts = new MqttConnectOptions();
             connOpts.setUserName(username);

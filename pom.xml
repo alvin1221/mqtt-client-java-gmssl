@@ -27,19 +27,4 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
-    <repositories>
-        <repository>
-            <id>Eclipse Paho Repo</id>
-            <url>https://repo.eclipse.org/content/repositories/paho-releases/</url>
-        </repository>
-    </repositories>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.eclipse.paho</groupId>
-            <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
-            <version>1.2.6-SNAPSHOT</version>
-        </dependency>
-    </dependencies>
-
 </project>

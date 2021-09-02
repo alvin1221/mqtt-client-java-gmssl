@@ -1,14 +1,16 @@
 package com.emqx;
 
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
+import com.emqx.config.Config;
+import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.Constructor;
 
 import javax.net.ssl.*;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -18,58 +20,65 @@ import java.util.UUID;
 public class Main {
 
     public static void main(String[] args) throws Exception {
-        String pub_topic = "/emqx/mqtt/sub";
-        String sub_topic = "/emqx/mqtt/sub";
+        new Main().startClient();
+    }
+
+    public void startClient() throws Exception {
+        String path = this.getClass().getClassLoader().getResource("").getPath();
+
+        System.out.println("current path: " + path);
+
+        Yaml yaml = new Yaml(new Constructor(Config.class));
+        InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream("config.yml");
+        Config config = yaml.load(inputStream);
+
         String content = "message-";
-        int qos = 1;
-        String broker = "ssl://iot-platform.cloud:6303";
-//        String broker = "ssl://122.112.237.20:2883";
-        String clientId = "client" + UUID.randomUUID();
-        String username = "";
-        String password = "";
+
+        String clientId = config.getOption().getClientIdPrefix() + UUID.randomUUID();
+
         MemoryPersistence persistence = new MemoryPersistence();
 
         try {
             Security.insertProviderAt((Provider) Class.forName("cn.gmssl.jce.provider.GMJCE").newInstance(), 1);
             Security.insertProviderAt((Provider) Class.forName("cn.gmssl.jsse.provider.GMJSSE").newInstance(), 2);
 
-            MqttClient client = new MqttClient(broker, clientId, persistence);
-            client.setTimeToWait(10000);
+            MqttClient client = new MqttClient(config.getBroker().getUri(), clientId, persistence);
+            client.setTimeToWait(2000);
 
             MqttConnectOptions connOpts = new MqttConnectOptions();
-            connOpts.setUserName(username);
-            connOpts.setPassword(password.toCharArray());
-
+            connOpts.setUserName(config.getBroker().getUsername());
+            connOpts.setPassword(config.getBroker().getPassword().toCharArray());
             connOpts.setCleanSession(true);
-            connOpts.setHttpsHostnameVerificationEnabled(false);
 
+            if (config.getSsl().getEnable()) {
+                connOpts.setHttpsHostnameVerificationEnabled(config.getSsl().getVerifyHostName());
 
-            String keyPwd = "12345678";
-            KeyStore pfx = createKeyStore("src/main/resources/sm2.user1.both.pfx", keyPwd);
+                String keyPwd = config.getSsl().getKeyFilePassword();
+                KeyStore pfx = createKeyStore(path + config.getSsl().getKeyFile(), keyPwd);
 
-            // 双向认证
-            // 加载可信证书
-            KeyStore trust = createTrustStore("src/main/resources/user1.oca.pem", "src/main/resources/user1.rca.pem");
-            SSLSocketFactory socketFactory = createSocketFactory(pfx, keyPwd, trust);
+                // 双向认证
+                // 加载可信证书
+                KeyStore trust = createTrustStore(path + config.getSsl().getOcaFile(), path + config.getSsl().getRcaFile());
+                SSLSocketFactory socketFactory = createSocketFactory(pfx, keyPwd, trust);
 
-            // 单向认证
+                // 单向认证
 //            SSLSocketFactory socketFactory = createSocketFactory(pfx, keyPwd, null);
 
-            connOpts.setEnabledCipherSuites(new String[]{"ECC_SM4_CBC_SM3"});
-            connOpts.setSocketFactory(socketFactory);
-
-            System.out.println("Connecting to broker: " + broker);
+                connOpts.setEnabledCipherSuites(config.getSsl().getCipherSuites());
+                connOpts.setSocketFactory(socketFactory);
+            }
+            System.out.println("Connecting to broker: " + config.getBroker().getUri());
             client.connectWithResult(connOpts).waitForCompletion(2000);
 
             System.out.println("Connected");
-            client.subscribe(sub_topic, (topic, msg) -> System.out.printf("Sub <- message: '%s' \t from '%s'\n", msg.toString(), topic));
+            client.subscribe(config.getOption().getSubTopic(), (topic, msg) -> System.out.printf("Sub <- message: '%s' \t from '%s'\n", msg.toString(), topic));
 
             do {
                 String data = content + UUID.randomUUID();
                 MqttMessage message = new MqttMessage(data.getBytes());
-                message.setQos(qos);
-                client.publish(pub_topic, message);
-                System.out.printf("Pub -> message: '%s' \t To   '%s'\n", data, pub_topic);
+                message.setQos(config.getOption().getQos());
+                client.publish(config.getOption().getPubTopic(), message);
+                System.out.printf("Pub -> message: '%s' \t To   '%s'\n", data, config.getOption().getPubTopic());
 
                 Thread.sleep(500);
             } while (true);
@@ -86,6 +95,7 @@ public class Main {
 
     public static KeyStore createKeyStore(String keyStorePath, String password) throws Exception {
 
+        System.out.println("keystore: " + keyStorePath);
         KeyStore keyStore = KeyStore.getInstance("PKCS12", "GMJSSE");
         keyStore.load(new FileInputStream(keyStorePath), password.toCharArray());
 

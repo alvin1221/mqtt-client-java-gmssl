@@ -1,0 +1,21 @@
+broker:
+#  uri: tcp://broker.emqx.io:1883
+  uri: ssl://server1:18855
+  username: ""
+  password: ""
+ssl:
+  enable: true
+  verifyHostName: false
+  keyFile: sm2.user1.both.pfx
+  keyFilePassword: 12345678
+  ocaFile: user1.oca.pem
+  rcaFile: user1.rca.pem
+  cipherSuites:
+    - ECC_SM4_CBC_SM3
+option:
+  clientIdPrefix: emqx
+  qos: 1
+  pubTopic: /emqx/mqtt/msg
+  subTopic: /emqx/mqtt/msg
+
+
